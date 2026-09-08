@@ -1,0 +1,473 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Recursion Machine</title>
+<style>
+:root {
+  --purple-dark: #4b3f8f;
+  --purple: #6c5ce7;
+  --purple-light: #a29bf0;
+  --gold: #f4b942;
+  --gold-dark: #e0932a;
+  --add-color: #f28c28;
+  --add-dark: #cf6f16;
+  --mult-color: #8e5ce6;
+  --mult-dark: #6f3fc4;
+  --cream: #fffaf0;
+  --ink: #2c2545;
+  --highlight: #ffd54a;
+  color-scheme: light;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background: linear-gradient(180deg, #efe9ff 0%, #f7f4ff 100%);
+  color: var(--ink);
+  padding: 28px 20px 56px;
+  font-size: 19px;
+}
+
+.app {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.app-header h1 {
+  text-align: center;
+  margin: 0 0 10px;
+  font-size: 2.8rem;
+  color: var(--purple-dark);
+}
+
+.subtitle {
+  text-align: center;
+  max-width: 760px;
+  margin: 0 auto 32px;
+  color: #4a4368;
+  line-height: 1.5;
+  font-size: 1.25rem;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 24px;
+}
+
+@media (max-width: 820px) {
+  .layout { grid-template-columns: 1fr; }
+}
+
+/* Stage */
+.stage {
+  position: relative;
+  min-height: 320px;
+  background: linear-gradient(180deg, #2f2560 0%, #4b3f8f 55%, #6c5ce7 100%);
+  border-radius: 20px;
+  padding: 32px 24px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
+  box-shadow: 0 10px 30px rgba(75, 63, 143, 0.35);
+}
+
+.stage-glow {
+  position: absolute;
+  top: -40%;
+  left: 50%;
+  width: 140%;
+  height: 140%;
+  transform: translateX(-50%);
+  background: radial-gradient(circle, rgba(255, 245, 200, 0.35) 0%, rgba(255, 245, 200, 0) 60%);
+  pointer-events: none;
+}
+
+.term-row {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  justify-content: center;
+  align-items: center;
+  min-height: 120px;
+  z-index: 1;
+}
+
+.term-chip {
+  background: var(--cream);
+  border: 4px solid var(--gold-dark);
+  color: var(--ink);
+  font-weight: 800;
+  font-size: 2.6rem;
+  line-height: 1;
+  min-width: 110px;
+  padding: 22px 16px;
+  border-radius: 16px;
+  text-align: center;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.25);
+  opacity: 0;
+  transform: translateY(14px) scale(0.7);
+  animation: pop-in 0.35s ease forwards;
+}
+
+.term-chip.highlight {
+  background: var(--highlight);
+  border-color: #c98a00;
+  box-shadow: 0 0 0 5px rgba(255, 213, 74, 0.45), 0 4px 12px rgba(0,0,0,0.3);
+}
+
+@keyframes pop-in {
+  0% { opacity: 0; transform: translateY(14px) scale(0.6); }
+  70% { opacity: 1; transform: translateY(-4px) scale(1.08); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.empty-hint {
+  position: relative;
+  z-index: 1;
+  color: #e7e1ff;
+  text-align: center;
+  margin: 0;
+  font-size: 1.3rem;
+}
+
+/* Controls */
+.controls {
+  background: white;
+  border-radius: 20px;
+  padding: 26px;
+  box-shadow: 0 8px 24px rgba(75, 63, 143, 0.12);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.control-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.control-group label {
+  font-weight: 700;
+  font-size: 1.15rem;
+  color: var(--purple-dark);
+}
+
+.control-group input[type="number"] {
+  padding: 14px 16px;
+  border: 2px solid #ded7f7;
+  border-radius: 12px;
+  font-size: 1.4rem;
+  color: var(--ink);
+  background: #faf9ff;
+}
+
+.control-group input[type="number"]:focus {
+  outline: none;
+  border-color: var(--purple);
+}
+
+.rule-toggle {
+  display: flex;
+  gap: 12px;
+}
+
+.rule-btn {
+  flex: 1;
+  padding: 14px 8px;
+  border-radius: 12px;
+  border: 2px solid #ded7f7;
+  background: #faf9ff;
+  font-weight: 700;
+  font-size: 1.25rem;
+  cursor: pointer;
+  color: #6a628f;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.rule-btn:hover { transform: translateY(-1px); }
+
+.rule-btn[data-rule="add"].active {
+  background: var(--add-color);
+  border-color: var(--add-dark);
+  color: white;
+  box-shadow: 0 3px 10px rgba(207, 111, 22, 0.4);
+}
+
+.rule-btn[data-rule="mult"].active {
+  background: var(--mult-color);
+  border-color: var(--mult-dark);
+  color: white;
+  box-shadow: 0 3px 10px rgba(111, 63, 196, 0.4);
+}
+
+.button-row {
+  display: flex;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.primary-btn, .secondary-btn {
+  flex: 1;
+  padding: 16px 10px;
+  border-radius: 12px;
+  border: none;
+  font-weight: 700;
+  font-size: 1.3rem;
+  cursor: pointer;
+  transition: transform 0.15s ease, filter 0.15s ease;
+}
+
+.primary-btn {
+  background: var(--purple-dark);
+  color: white;
+}
+
+.primary-btn:hover { filter: brightness(1.1); transform: translateY(-1px); }
+.primary-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+.secondary-btn {
+  background: #efeaff;
+  color: var(--purple-dark);
+}
+
+.secondary-btn:hover { background: #e2d9ff; }
+
+.definition {
+  position: relative;
+  z-index: 1;
+  margin: 0;
+  padding: 14px 22px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  border-radius: 14px;
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #fff;
+  text-align: center;
+  min-height: 1.4em;
+}
+
+.task-card {
+  margin-top: 26px;
+  background: #fff7e3;
+  border: 2px dashed var(--gold-dark);
+  border-radius: 14px;
+  padding: 20px 24px;
+  font-size: 1.2rem;
+}
+
+.task-card p { margin: 8px 0; }
+</style>
+</head>
+<body>
+  <main class="app">
+    <header class="app-header">
+      <h1>The Recursion Machine</h1>
+      <p class="subtitle">
+        The machine builds a sequence from a <strong>first term</strong> and a <strong>rule</strong>.
+        Together, a first term and a rule make a <em>recursive definition</em>.
+      </p>
+    </header>
+
+    <div class="layout">
+      <section class="stage" aria-label="Sequence stage">
+        <div class="stage-glow"></div>
+        <div class="term-row" id="termRow"></div>
+        <p class="empty-hint" id="emptyHint">Set up the machine, then press <strong>Make It!</strong></p>
+        <p class="definition" id="definition" aria-live="polite"></p>
+      </section>
+
+      <section class="controls">
+        <div class="control-group">
+          <label for="firstTerm">First Term (<var>a</var><sub>1</sub>)</label>
+          <input type="number" id="firstTerm" value="1" step="any" inputmode="decimal">
+        </div>
+
+        <div class="control-group">
+          <label id="ruleGroupLabel">Rule</label>
+          <div class="rule-toggle" role="group" aria-labelledby="ruleGroupLabel">
+            <button type="button" class="rule-btn active" data-rule="add" id="ruleAddBtn" aria-pressed="true">+ &nbsp;Add</button>
+            <button type="button" class="rule-btn" data-rule="mult" id="ruleMultBtn" aria-pressed="false">&times; &nbsp;Multiply</button>
+          </div>
+        </div>
+
+        <div class="control-group">
+          <label for="operand" id="operandLabel">Common Difference (<var>d</var>)</label>
+          <input type="number" id="operand" value="3" step="any" inputmode="decimal">
+        </div>
+
+        <div class="button-row">
+          <button type="button" id="makeItBtn" class="primary-btn">Make It!</button>
+          <button type="button" id="resetBtn" class="secondary-btn">Reset</button>
+        </div>
+      </section>
+    </div>
+
+    <section class="task-card">
+      <p><strong>a.</strong> Change the first term and the rule to create some new recursive definitions.</p>
+      <p><strong>b.</strong> Create as many sequences as you can that include the number <strong>12</strong>.</p>
+    </section>
+  </main>
+
+  <script>
+  (function () {
+    "use strict";
+
+    const firstTermInput = document.getElementById("firstTerm");
+    const operandInput = document.getElementById("operand");
+    const operandLabel = document.getElementById("operandLabel");
+    const ruleAddBtn = document.getElementById("ruleAddBtn");
+    const ruleMultBtn = document.getElementById("ruleMultBtn");
+    const makeItBtn = document.getElementById("makeItBtn");
+    const resetBtn = document.getElementById("resetBtn");
+    const termRow = document.getElementById("termRow");
+    const emptyHint = document.getElementById("emptyHint");
+    const definitionEl = document.getElementById("definition");
+
+    const NUM_TERMS = 5;
+
+    const DEFAULTS = {
+      firstTerm: 1,
+      rule: "add",
+      addOperand: 3,
+      multOperand: 2,
+    };
+
+    let currentRule = DEFAULTS.rule;
+    let animationTimer = null;
+
+    function formatNumber(n) {
+      // Trim floating point noise, keep it readable.
+      if (Number.isInteger(n)) return String(n);
+      return String(Math.round(n * 1e6) / 1e6);
+    }
+
+    function setRule(rule) {
+      currentRule = rule;
+      const isAdd = rule === "add";
+
+      ruleAddBtn.classList.toggle("active", isAdd);
+      ruleAddBtn.setAttribute("aria-pressed", String(isAdd));
+      ruleMultBtn.classList.toggle("active", !isAdd);
+      ruleMultBtn.setAttribute("aria-pressed", String(!isAdd));
+
+      operandLabel.textContent = isAdd
+        ? "Common Difference (d)"
+        : "Constant Ratio (r)";
+
+      // Give a sensible default operand when switching rules, but don't
+      // stomp on a value the student already typed for this rule.
+      if (operandInput.dataset.rule !== rule) {
+        operandInput.value = isAdd ? DEFAULTS.addOperand : DEFAULTS.multOperand;
+        operandInput.dataset.rule = rule;
+      }
+
+      updateDefinition();
+    }
+
+    function updateDefinition() {
+      const a1 = firstTermInput.value.trim();
+      const op = operandInput.value.trim();
+      if (a1 === "" || op === "") {
+        definitionEl.textContent = "";
+        return;
+      }
+      const symbol = currentRule === "add" ? "+" : "×";
+      definitionEl.innerHTML =
+        `a₁ = ${a1}, &nbsp; a<sub>n</sub> = a<sub>n-1</sub> ${symbol} ${op}`;
+    }
+
+    function buildSequence(a1, operand, rule, count) {
+      const terms = [a1];
+      for (let i = 1; i < count; i++) {
+        const prev = terms[i - 1];
+        terms.push(rule === "add" ? prev + operand : prev * operand);
+      }
+      return terms;
+    }
+
+    function clearStage() {
+      if (animationTimer) {
+        clearTimeout(animationTimer);
+        animationTimer = null;
+      }
+      termRow.innerHTML = "";
+      emptyHint.style.display = "";
+      makeItBtn.disabled = false;
+    }
+
+    function animateSequence(terms) {
+      emptyHint.style.display = "none";
+      termRow.innerHTML = "";
+      makeItBtn.disabled = true;
+
+      let i = 0;
+      function placeNext() {
+        if (i >= terms.length) {
+          makeItBtn.disabled = false;
+          return;
+        }
+        const value = terms[i];
+        const chip = document.createElement("div");
+        chip.className = "term-chip";
+        if (Math.abs(value - 12) < 1e-9) {
+          chip.classList.add("highlight");
+        }
+        chip.style.animationDelay = "0s";
+        chip.textContent = formatNumber(value);
+        termRow.appendChild(chip);
+
+        i++;
+        animationTimer = setTimeout(placeNext, 450);
+      }
+      placeNext();
+    }
+
+    function handleMakeIt() {
+      const a1 = parseFloat(firstTermInput.value);
+      const operand = parseFloat(operandInput.value);
+
+      if (Number.isNaN(a1) || Number.isNaN(operand)) {
+        emptyHint.textContent = "Please enter a valid first term and rule value.";
+        emptyHint.style.display = "";
+        termRow.innerHTML = "";
+        return;
+      }
+
+      const terms = buildSequence(a1, operand, currentRule, NUM_TERMS);
+      animateSequence(terms);
+    }
+
+    function handleReset() {
+      firstTermInput.value = DEFAULTS.firstTerm;
+      delete operandInput.dataset.rule;
+      setRule(DEFAULTS.rule);
+      emptyHint.textContent = "Set up the machine, then press “Make It!”";
+      clearStage();
+      updateDefinition();
+    }
+
+    ruleAddBtn.addEventListener("click", () => setRule("add"));
+    ruleMultBtn.addEventListener("click", () => setRule("mult"));
+    makeItBtn.addEventListener("click", handleMakeIt);
+    resetBtn.addEventListener("click", handleReset);
+    [firstTermInput, operandInput].forEach((el) =>
+      el.addEventListener("input", updateDefinition)
+    );
+
+    // Initialize
+    setRule(DEFAULTS.rule);
+  })();
+  </script>
+</body>
+</html>
